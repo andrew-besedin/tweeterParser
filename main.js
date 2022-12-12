@@ -11,6 +11,11 @@ const subscribeStorage = new Storage("./subscribes.json");
 const subscribingSet = new Set();
 const unsubscribingSet = new Set();
 
+const getUsername = function (twitterUser) {
+    if (twitterUser[0] == "@" && twitterUser.split("@").length == 2) return twitterUser.split("@")[1];
+    return null;
+}
+
 let guestToken = "1602321551516393480";
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -36,9 +41,13 @@ bot.command("unsubscribe", (ctx) => {
 
 bot.on("message", async (ctx) => { 
     if (subscribingSet.has(ctx.message.from.username)) {
-        let twitterUser = ctx.message.text.split("@")[1];
-        let twitterId;
         subscribingSet.delete(ctx.message.from.username);
+        let twitterUser = getUsername(ctx.message.text);
+        if (!twitterUser) {
+            ctx.reply("Некорректный ввод логина.");
+            return;
+        }
+        let twitterId;
         try {
             twitterId = await fetch(`https://twitter.com/i/api/graphql/X7fFRSOaxfcxCk0VGDIKdA/UserByScreenName?variables=%7B%22screen_name%22%3A%22${twitterUser}%22%2C%22withSafetyModeUserFields%22%3Atrue%2C%22withSuperFollowsUserFields%22%3Atrue%7D&features=%7B%22responsive_web_twitter_blue_verified_badge_is_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22responsive_web_twitter_blue_new_verification_copy_is_enabled%22%3Afalse%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%7D`, {
                 "headers": {
@@ -75,10 +84,15 @@ bot.on("message", async (ctx) => {
     } 
     if (unsubscribingSet.has(ctx.message.from.username)) {
         unsubscribingSet.delete(ctx.message.from.username);
+        let twitterUser = getUsername(ctx.message.text);
+        if (!twitterUser) {
+            ctx.reply("Некорректный ввод логина.");
+            return;
+        }
         const userSubscribes = subscribeStorage.get(ctx.message.from.username);
         let twitterId;
         if (userSubscribes) {   
-            twitterId = Object.keys(userSubscribes).find(e => userSubscribes[e].twitterUser == ctx.message.text.split("@")[1]);
+            twitterId = Object.keys(userSubscribes).find(e => userSubscribes[e].twitterUser == twitterUser);
         }
         if (!twitterId) ctx.reply("Вы не подписаны на этого пользователя.");
         if (twitterId) {
